@@ -96,6 +96,8 @@ class CustomCalendar(GridLayout):
     def on_day_select(self, day):
         selected_date = datetime(self.current_date.year, self.current_date.month, day)
         print(f'Fecha seleccionada: {selected_date.strftime("%d/%m/%Y")}')
+        # Navigate to video screen
+        self.parent.parent.parent.current = 'video'
 
     def navigate(self, direction):
         """Navegar según el modo de vista."""

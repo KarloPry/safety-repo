@@ -4,6 +4,7 @@ from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager
 from screens.login import LoginScreen
 from screens.home import HomeScreen
+from screens.video import VideoScreen
 
 
 class MainApp(App):
@@ -12,6 +13,7 @@ class MainApp(App):
         sm = ScreenManager()
         sm.add_widget(LoginScreen(name='main'))
         sm.add_widget(HomeScreen(name='home'))
+        sm.add_widget(VideoScreen(name='video'))
         return sm
 
 if __name__ == '__main__':
