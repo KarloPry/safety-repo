@@ -1,11 +1,15 @@
-from kivy.uix.screenmanager import Screen
+from kivy.uix.screenmanager import Screen, ScreenManager
 from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.boxlayout import BoxLayout
 from kivy.graphics import Color, Rectangle
+from kivy.uix.modalview import ModalView
+from kivy.uix.image import Image
+from kivy.uix.video import Video
 from datetime import datetime, timedelta
 import calendar
+from kivy.uix.widget import Widget
 
 
 class CustomCalendar(GridLayout):
@@ -16,6 +20,7 @@ class CustomCalendar(GridLayout):
         self.on_date_change = on_date_change  # Callback para actualizar el título
         self.spacing = 2
         self.padding = 5
+        self.video_modal = VideoModal()
         self.update_view()
 
     def update_view(self):
@@ -33,7 +38,7 @@ class CustomCalendar(GridLayout):
         elif self.view_mode == 'day':
             self.create_day_view()
 
-    def create_month_view(self):
+    def create_month_view(self, day=None):
         """Crea la vista del calendario mensual."""
         self.cols = 7
 
@@ -96,8 +101,8 @@ class CustomCalendar(GridLayout):
     def on_day_select(self, day):
         selected_date = datetime(self.current_date.year, self.current_date.month, day)
         print(f'Fecha seleccionada: {selected_date.strftime("%d/%m/%Y")}')
-        # Navigate to video screen
-        self.parent.parent.parent.current = 'video'
+        # Open the video modal
+        self.video_modal.open()
 
     def navigate(self, direction):
         """Navegar según el modo de vista."""
@@ -144,49 +149,74 @@ class HomeScreen(Screen):
     def __init__(self, **kwargs):
         super(HomeScreen, self).__init__(**kwargs)
 
-        # Layout principal
-        self.layout = BoxLayout(orientation='vertical', spacing=10, padding=20)
+        # Layout principal vertical para las dos secciones
+        main_layout = BoxLayout(orientation='vertical', spacing=10, padding=20)
+
+        # Barra de botones para cambiar secciones
+        button_bar = BoxLayout(orientation='horizontal', size_hint_y=None, height=50)
+        button_bar.add_widget(Button(text='Calendario', on_press=self.switch_to_calendar))
+        button_bar.add_widget(Button(text='Estadísticas', on_press=self.switch_to_statistics))
+        main_layout.add_widget(button_bar)
+
+        # ScreenManager para manejar las secciones
+        self.screen_manager = ScreenManager()
+
+        # Pantalla de Calendario
+        calendar_screen = Screen(name='calendar')
+        calendar_layout = BoxLayout(orientation='vertical')
 
         # Fondo del screen
-        with self.canvas.before:
-            Color(rgba=(176 / 255, 198 / 255, 206 / 255, 1))
-            self.rect = Rectangle(size=self.size, pos=self.pos)
-        self.bind(size=self._update_rect, pos=self._update_rect)
+        with calendar_screen.canvas.before:
+            Color(rgba=(176 / 255, 198 / 255, 206 / 255, 1))  # Color azul
+            self.rect = Rectangle(size=calendar_screen.size, pos=calendar_screen.pos)
+        calendar_screen.bind(size=self._update_rect, pos=self._update_rect)
 
         # Título que muestra el mes y el año
         self.title_label = Label(
             text='',
             font_size=24,
-            size_hint=(1, 0.1)
+            size_hint_y=None,
+            height=50
         )
-        self.layout.add_widget(self.title_label)
+        calendar_layout.add_widget(self.title_label)
 
         # Navbar para cambiar vistas
-        self.navbar = BoxLayout(orientation='horizontal', size_hint=(1, 0.1))
+        self.navbar = BoxLayout(orientation='horizontal', size_hint_y=None, height=50)
         self.navbar.add_widget(Button(text='Mes', on_press=self.switch_to_month))
         self.navbar.add_widget(Button(text='Semana', on_press=self.switch_to_week))
         self.navbar.add_widget(Button(text='Día', on_press=self.switch_to_day))
-        self.layout.add_widget(self.navbar)
+        calendar_layout.add_widget(self.navbar)
 
         # Barra de navegación del calendario
-        self.navigation_bar = BoxLayout(orientation='horizontal', size_hint=(1, 0.1))
+        self.navigation_bar = BoxLayout(orientation='horizontal', size_hint_y=None, height=50)
         self.navigation_bar.add_widget(Button(text='Anterior', on_press=self.navigate_previous))
         self.navigation_bar.add_widget(Button(text='Siguiente', on_press=self.navigate_next))
-        self.layout.add_widget(self.navigation_bar)
+        calendar_layout.add_widget(self.navigation_bar)
 
         # Instancia del calendario
-        self.calendar = CustomCalendar(view_mode='month', on_date_change=self.update_title, size_hint=(1, 0.7))
-        self.layout.add_widget(self.calendar)
+        self.calendar = CustomCalendar(view_mode='month', on_date_change=self.update_title)
+        calendar_layout.add_widget(self.calendar)
 
-        # Selected date label
-        self.selected_date_label = Label(
-            text='Seleccione una fecha',
-            size_hint=(1, 0.1)
-        )
-        self.layout.add_widget(self.selected_date_label)
+        calendar_screen.add_widget(calendar_layout)
+        self.screen_manager.add_widget(calendar_screen)
 
-        # Agregar layout a la pantalla
-        self.add_widget(self.layout)
+        # Pantalla de Estadísticas
+        statistics_screen = Screen(name='statistics')
+        statistics_layout = StatisticsSection()
+        statistics_screen.add_widget(statistics_layout)
+        self.screen_manager.add_widget(statistics_screen)
+
+        # Agregar ScreenManager al layout principal
+        main_layout.add_widget(self.screen_manager)
+
+        # Agregar layout principal a la pantalla
+        self.add_widget(main_layout)
+
+    def switch_to_calendar(self, instance):
+        self.screen_manager.current = 'calendar'
+
+    def switch_to_statistics(self, instance):
+        self.screen_manager.current = 'statistics'
 
     def switch_to_month(self, instance):
         self.calendar.view_mode = 'month'
@@ -216,3 +246,76 @@ class HomeScreen(Screen):
     def _update_rect(self, instance, value):
         self.rect.size = self.size
         self.rect.pos = self.pos
+
+
+class VideoModal(ModalView):
+    def __init__(self, **kwargs):
+        super(VideoModal, self).__init__(**kwargs)
+        self.size_hint = (0.8, 0.8)
+
+        # Layout principal del modal
+        layout = BoxLayout(orientation='vertical', spacing=10, padding=20)
+
+        # Contenedor del botón de cerrar
+        close_button_container = BoxLayout(orientation='horizontal', size_hint=(1, None), height=50)
+
+        # Añadir un Widget para empujar el botón de cerrar a la derecha
+        close_button_container.add_widget(Widget())
+
+        # Botón para cerrar el modal (X en la esquina superior derecha)
+        close_button = Button(
+            text='×',
+            size_hint=(None, None),
+            size=(50, 50),
+            font_size=24,
+        )
+        close_button.bind(on_press=self.dismiss)
+        close_button_container.add_widget(close_button)
+        layout.add_widget(close_button_container, index=0)
+
+        # Logo
+        layout.add_widget(Image(source='assets/logo.png', size_hint=(1, 0.3)))
+
+        # Video player
+        self.video = Video(source='assets/video.mp4', state='play', options={'allow_stretch': True})
+        layout.add_widget(self.video)
+
+        # Controles
+        controls = GridLayout(cols=3, spacing=10, size_hint=(1, 0.2))
+
+        play_button = Button(text='Play', font_size=40)
+        play_button.bind(on_press=lambda x: setattr(self.video, 'state', 'play'))
+        controls.add_widget(play_button)
+
+        pause_button = Button(text='Pause', font_size=40)
+        pause_button.bind(on_press=lambda x: setattr(self.video, 'state', 'pause'))
+        controls.add_widget(pause_button)
+
+        stop_button = Button(text='Stop', font_size=40)
+        stop_button.bind(on_press=lambda x: setattr(self.video, 'state', 'stop'))
+        controls.add_widget(stop_button)
+
+        layout.add_widget(controls)
+
+        self.add_widget(layout)
+
+
+class StatisticsSection(BoxLayout):
+    def __init__(self, **kwargs):
+        super(StatisticsSection, self).__init__(**kwargs)
+        self.orientation = 'vertical'
+        self.padding = 20
+        self.spacing = 10
+
+        # Título de la sección
+        self.add_widget(Label(
+            text='Estadísticas',
+            font_size=24,
+            size_hint=(1, 0.1)
+        ))
+
+        # Placeholder para estadísticas futuras
+        self.add_widget(Label(
+            text='Sección de estadísticas\n(En desarrollo)',
+            size_hint=(1, 0.9)
+        ))

@@ -14,6 +14,7 @@ class MainApp(App):
         sm.add_widget(LoginScreen(name='main'))
         sm.add_widget(HomeScreen(name='home'))
         sm.add_widget(VideoScreen(name='video'))
+        sm.add_widget(VideoScreen(name='video'))
         return sm
 
 if __name__ == '__main__':
